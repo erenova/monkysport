@@ -11,8 +11,6 @@ import { VideoModal } from '@/components/video-modal'
 import { PlanManager } from '@/components/plan-manager'
 import { Settings, Dumbbell } from 'lucide-react'
 
-const DEFAULT_PASSWORD = 'Erenovamasterpro'
-
 export default function Home() {
   const [plan, setPlan] = useState<WorkoutPlan>(defaultPlan)
   const [selectedDay, setSelectedDay] = useState(getTodaysDayNumber())
@@ -20,11 +18,8 @@ export default function Home() {
   const [videoExercise, setVideoExercise] = useState<Exercise | null>(null)
   const [showManager, setShowManager] = useState(false)
   const [loaded, setLoaded] = useState(false)
-
-  const [isAdmin, setIsAdmin] = useState(false)
   const [gistId, setGistId] = useState('')
   const [githubToken, setGithubToken] = useState('')
-  const [adminPassword, setAdminPassword] = useState(DEFAULT_PASSWORD)
 
   useEffect(() => {
     const data = loadData()
@@ -33,7 +28,6 @@ export default function Home() {
       setLogs(data.logs)
       if (data.settings.gistId) setGistId(data.settings.gistId)
       if (data.settings.githubToken) setGithubToken(data.settings.githubToken)
-      if (data.settings.adminPassword) setAdminPassword(data.settings.adminPassword)
     }
     setLoaded(true)
   }, [])
@@ -48,8 +42,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!loaded) return
-    saveData({ plan, logs, settings: { startDate: new Date().toISOString(), gistId: gistId || undefined, githubToken: githubToken || undefined, adminPassword } })
-  }, [plan, logs, loaded, gistId, githubToken, adminPassword])
+    saveData({ plan, logs, settings: { startDate: new Date().toISOString(), gistId: gistId || undefined, githubToken: githubToken || undefined } })
+  }, [plan, logs, loaded, gistId, githubToken])
 
   const currentDay = plan.schedule.find(d => d.day === selectedDay)
   const todayLog = getTodayLog(logs, selectedDay)
@@ -124,14 +118,6 @@ export default function Home() {
     setLogs([])
   }
 
-  function handleLogin(pw: string): boolean {
-    if (pw === adminPassword) {
-      setIsAdmin(true)
-      return true
-    }
-    return false
-  }
-
   function handleSettingsChange(newGistId: string, newToken: string) {
     setGistId(newGistId)
     setGithubToken(newToken)
@@ -165,7 +151,7 @@ export default function Home() {
     ? [...new Set(currentDay.exercises.flatMap(e => e.targetMuscles))]
     : []
 
-  const appData: AppData = { plan, logs, settings: { startDate: new Date().toISOString(), gistId: gistId || undefined, githubToken: githubToken || undefined, adminPassword } }
+  const appData: AppData = { plan, logs, settings: { startDate: new Date().toISOString(), gistId: gistId || undefined, githubToken: githubToken || undefined } }
 
   return (
     <main className="max-w-lg mx-auto pb-12">
@@ -239,7 +225,6 @@ export default function Home() {
               key={exercise.id}
               exercise={exercise}
               log={todayLog?.exercises.find(e => e.exerciseId === exercise.id)}
-              editable={isAdmin}
               onToggleSet={handleToggleSet}
               onVideoClick={setVideoExercise}
               onUpdate={handleUpdateExercise}
@@ -274,11 +259,8 @@ export default function Home() {
         <PlanManager
           plan={plan}
           allData={appData}
-          isAdmin={isAdmin}
           gistId={gistId}
           githubToken={githubToken}
-          onLogin={handleLogin}
-          onLogout={() => setIsAdmin(false)}
           onImport={handleImport}
           onReset={handleReset}
           onSettingsChange={handleSettingsChange}

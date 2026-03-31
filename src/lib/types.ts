@@ -42,6 +42,5 @@ export interface AppData {
     startDate: string
     gistId?: string
     githubToken?: string
-    adminPassword: string
   }
 }
