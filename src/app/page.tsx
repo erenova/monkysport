@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { WorkoutPlan, DayLog, Exercise, AppData } from '@/lib/types'
-import { loadData, saveData, getTodayLog, updateLog, fetchRemotePlan } from '@/lib/storage'
+import { loadData, saveData, getTodayLog, updateLog, fetchGistPlan, pushGistPlan } from '@/lib/storage'
 import { getTodaysDayNumber, getToday } from '@/lib/utils'
 import { defaultPlan } from '@/data/default-plan'
 import { DaySelector } from '@/components/day-selector'
@@ -11,6 +11,8 @@ import { VideoModal } from '@/components/video-modal'
 import { PlanManager } from '@/components/plan-manager'
 import { Settings, Dumbbell } from 'lucide-react'
 
+const DEFAULT_PASSWORD = 'Erenovamasterpro'
+
 export default function Home() {
   const [plan, setPlan] = useState<WorkoutPlan>(defaultPlan)
   const [selectedDay, setSelectedDay] = useState(getTodaysDayNumber())
@@ -18,22 +20,36 @@ export default function Home() {
   const [videoExercise, setVideoExercise] = useState<Exercise | null>(null)
   const [showManager, setShowManager] = useState(false)
   const [loaded, setLoaded] = useState(false)
-  const [remoteUrl, setRemoteUrl] = useState('')
+
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [gistId, setGistId] = useState('')
+  const [githubToken, setGithubToken] = useState('')
+  const [adminPassword, setAdminPassword] = useState(DEFAULT_PASSWORD)
 
   useEffect(() => {
     const data = loadData()
     if (data) {
       setPlan(data.plan)
       setLogs(data.logs)
-      if (data.settings.remoteUrl) setRemoteUrl(data.settings.remoteUrl)
+      if (data.settings.gistId) setGistId(data.settings.gistId)
+      if (data.settings.githubToken) setGithubToken(data.settings.githubToken)
+      if (data.settings.adminPassword) setAdminPassword(data.settings.adminPassword)
     }
     setLoaded(true)
   }, [])
 
+  // Auto-sync from gist on load
+  useEffect(() => {
+    if (!loaded || !gistId) return
+    fetchGistPlan(gistId)
+      .then(remote => setPlan(remote))
+      .catch(() => {})
+  }, [loaded, gistId])
+
   useEffect(() => {
     if (!loaded) return
-    saveData({ plan, logs, settings: { startDate: new Date().toISOString(), remoteUrl: remoteUrl || undefined } })
-  }, [plan, logs, loaded, remoteUrl])
+    saveData({ plan, logs, settings: { startDate: new Date().toISOString(), gistId: gistId || undefined, githubToken: githubToken || undefined, adminPassword } })
+  }, [plan, logs, loaded, gistId, githubToken, adminPassword])
 
   const currentDay = plan.schedule.find(d => d.day === selectedDay)
   const todayLog = getTodayLog(logs, selectedDay)
@@ -108,10 +124,28 @@ export default function Home() {
     setLogs([])
   }
 
+  function handleLogin(pw: string): boolean {
+    if (pw === adminPassword) {
+      setIsAdmin(true)
+      return true
+    }
+    return false
+  }
+
+  function handleSettingsChange(newGistId: string, newToken: string) {
+    setGistId(newGistId)
+    setGithubToken(newToken)
+  }
+
   async function handleSync() {
-    if (!remoteUrl) return
-    const remote = await fetchRemotePlan(remoteUrl)
+    if (!gistId) throw new Error('Gist ID yok')
+    const remote = await fetchGistPlan(gistId)
     setPlan(remote)
+  }
+
+  async function handlePush() {
+    if (!gistId || !githubToken) throw new Error('Gist ayarları eksik')
+    await pushGistPlan(gistId, githubToken, plan)
   }
 
   if (!loaded) {
@@ -131,7 +165,7 @@ export default function Home() {
     ? [...new Set(currentDay.exercises.flatMap(e => e.targetMuscles))]
     : []
 
-  const appData: AppData = { plan, logs, settings: { startDate: new Date().toISOString() } }
+  const appData: AppData = { plan, logs, settings: { startDate: new Date().toISOString(), gistId: gistId || undefined, githubToken: githubToken || undefined, adminPassword } }
 
   return (
     <main className="max-w-lg mx-auto pb-12">
@@ -205,6 +239,7 @@ export default function Home() {
               key={exercise.id}
               exercise={exercise}
               log={todayLog?.exercises.find(e => e.exerciseId === exercise.id)}
+              editable={isAdmin}
               onToggleSet={handleToggleSet}
               onVideoClick={setVideoExercise}
               onUpdate={handleUpdateExercise}
@@ -239,11 +274,16 @@ export default function Home() {
         <PlanManager
           plan={plan}
           allData={appData}
-          remoteUrl={remoteUrl}
+          isAdmin={isAdmin}
+          gistId={gistId}
+          githubToken={githubToken}
+          onLogin={handleLogin}
+          onLogout={() => setIsAdmin(false)}
           onImport={handleImport}
           onReset={handleReset}
-          onRemoteUrlChange={setRemoteUrl}
+          onSettingsChange={handleSettingsChange}
           onSync={handleSync}
+          onPush={handlePush}
           onClose={() => setShowManager(false)}
         />
       )}

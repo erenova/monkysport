@@ -40,6 +40,8 @@ export interface AppData {
   logs: DayLog[]
   settings: {
     startDate: string
-    remoteUrl?: string
+    gistId?: string
+    githubToken?: string
+    adminPassword: string
   }
 }

@@ -23,3 +23,10 @@ export function getYouTubeSearchUrl(query: string): string {
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 9)
 }
+
+export function extractGistId(input: string): string {
+  const trimmed = input.trim()
+  if (/^[a-f0-9]{20,}$/.test(trimmed)) return trimmed
+  const match = trimmed.match(/([a-f0-9]{20,})/)
+  return match ? match[1] : trimmed
+}

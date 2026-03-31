@@ -8,12 +8,13 @@ import { Play, Pencil, Check, X, ChevronDown, ChevronUp, Timer } from 'lucide-re
 interface ExerciseCardProps {
   exercise: Exercise
   log?: ExerciseLog
+  editable: boolean
   onToggleSet: (exerciseId: string, setIndex: number) => void
   onVideoClick: (exercise: Exercise) => void
   onUpdate: (exercise: Exercise) => void
 }
 
-export function ExerciseCard({ exercise, log, onToggleSet, onVideoClick, onUpdate }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, log, editable, onToggleSet, onVideoClick, onUpdate }: ExerciseCardProps) {
   const [editing, setEditing] = useState(false)
   const [showNotes, setShowNotes] = useState(false)
   const [draft, setDraft] = useState(exercise)
@@ -152,16 +153,18 @@ export function ExerciseCard({ exercise, log, onToggleSet, onVideoClick, onUpdat
             </div>
           </div>
         </div>
-        <button
-          onClick={() => {
-            setDraft(exercise)
-            setEditing(true)
-          }}
-          className="shrink-0 p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
-          aria-label="Düzenle"
-        >
-          <Pencil size={14} />
-        </button>
+        {editable && (
+          <button
+            onClick={() => {
+              setDraft(exercise)
+              setEditing(true)
+            }}
+            className="shrink-0 p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
+            aria-label="Düzenle"
+          >
+            <Pencil size={14} />
+          </button>
+        )}
       </div>
 
       <div className="flex gap-1.5 mt-3">

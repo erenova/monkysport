@@ -64,12 +64,28 @@ export function importPlan(file: File): Promise<WorkoutPlan> {
   })
 }
 
-export async function fetchRemotePlan(url: string): Promise<WorkoutPlan> {
-  const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const plan = await res.json()
+export async function fetchGistPlan(gistId: string): Promise<WorkoutPlan> {
+  const res = await fetch(`https://api.github.com/gists/${gistId}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`GitHub API: ${res.status}`)
+  const gist = await res.json()
+  const file = Object.values(gist.files)[0] as { content: string }
+  const plan = JSON.parse(file.content)
   if (!plan.id || !plan.schedule) throw new Error('Geçersiz plan formatı')
   return plan
+}
+
+export async function pushGistPlan(gistId: string, token: string, plan: WorkoutPlan): Promise<void> {
+  const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      files: { 'plan.json': { content: JSON.stringify(plan, null, 2) } },
+    }),
+  })
+  if (!res.ok) throw new Error(`GitHub API: ${res.status}`)
 }
 
 export function exportAllData(data: AppData): void {
