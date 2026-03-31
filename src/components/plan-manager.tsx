@@ -7,6 +7,7 @@ import { extractGistId } from '@/lib/utils'
 import {
   X, Download, Upload, RotateCcw, Database,
   Lock, Unlock, RefreshCw, ArrowUpFromLine, Link, KeyRound,
+  Copy, FileText,
 } from 'lucide-react'
 
 interface PlanManagerProps {
@@ -37,6 +38,8 @@ export function PlanManager({
   const [syncing, setSyncing] = useState(false)
   const [pushing, setPushing] = useState(false)
   const [status, setStatus] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [showTextImport, setShowTextImport] = useState(false)
+  const [textImport, setTextImport] = useState('')
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -99,6 +102,31 @@ export function PlanManager({
       onClose()
     } catch (err) {
       alert('Plan yüklenemedi: ' + (err as Error).message)
+    }
+  }
+
+  function handleTextImportSubmit() {
+    try {
+      const parsed = JSON.parse(textImport.trim())
+      if (!parsed.id || !parsed.schedule) {
+        setStatus({ type: 'err', msg: 'Geçersiz plan: id ve schedule gerekli' })
+        return
+      }
+      onImport(parsed)
+      setTextImport('')
+      setShowTextImport(false)
+      onClose()
+    } catch {
+      setStatus({ type: 'err', msg: 'Geçersiz JSON formatı' })
+    }
+  }
+
+  async function copyToClipboard(data: object, label: string) {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+      setStatus({ type: 'ok', msg: `${label} panoya kopyalandı` })
+    } catch {
+      setStatus({ type: 'err', msg: 'Kopyalama başarısız' })
     }
   }
 
@@ -237,53 +265,96 @@ export function PlanManager({
         )}
 
         <div className="p-3 space-y-1.5">
-          {[
-            {
-              icon: <Download size={20} className="text-amber-400" />,
-              title: 'Planı Dışa Aktar',
-              subtitle: 'JSON formatında indir',
-              onClick: () => exportPlan(plan),
-            },
-            {
-              icon: <Database size={20} className="text-emerald-400" />,
-              title: 'Tüm Veriyi Yedekle',
-              subtitle: 'Plan + antrenman logları',
-              onClick: () => exportAllData(allData),
-            },
-            ...(isAdmin ? [
-              {
-                icon: <Upload size={20} className="text-sky-400" />,
-                title: 'Plan İçe Aktar',
-                subtitle: 'JSON dosyası yükle',
-                onClick: () => fileInputRef.current?.click(),
-              },
-              {
-                icon: <RotateCcw size={20} className="text-red-400" />,
-                title: 'Varsayılana Dön',
-                subtitle: 'Orijinal planı geri yükle',
-                onClick: () => {
+          <p className="text-[10px] text-zinc-500 uppercase font-medium px-1 pt-1">Dışa Aktar</p>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => exportPlan(plan)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition-colors text-sm"
+            >
+              <Download size={16} className="text-amber-400" />
+              <span>İndir</span>
+            </button>
+            <button
+              onClick={() => copyToClipboard(plan, 'Plan')}
+              className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition-colors text-sm"
+            >
+              <Copy size={16} className="text-amber-400" />
+              <span>Kopyala</span>
+            </button>
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => exportAllData(allData)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition-colors text-xs text-zinc-400"
+            >
+              <Database size={14} className="text-emerald-400" />
+              <span>Tüm Veriyi İndir</span>
+            </button>
+            <button
+              onClick={() => copyToClipboard(allData, 'Tüm veri')}
+              className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition-colors text-xs text-zinc-400"
+            >
+              <Copy size={14} className="text-emerald-400" />
+              <span>Tüm Veriyi Kopyala</span>
+            </button>
+          </div>
+
+          {isAdmin && (
+            <>
+              <p className="text-[10px] text-zinc-500 uppercase font-medium px-1 pt-3">İçe Aktar</p>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition-colors text-sm"
+                >
+                  <Upload size={16} className="text-sky-400" />
+                  <span>Dosyadan</span>
+                </button>
+                <button
+                  onClick={() => setShowTextImport(!showTextImport)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition-colors text-sm"
+                >
+                  <FileText size={16} className="text-sky-400" />
+                  <span>JSON Yapıştır</span>
+                </button>
+              </div>
+              {showTextImport && (
+                <div className="space-y-2 pt-1">
+                  <textarea
+                    value={textImport}
+                    onChange={e => setTextImport(e.target.value)}
+                    placeholder='{"id": "...", "name": "...", "schedule": [...]}'
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs font-mono resize-none focus:outline-none focus:border-sky-500/50 placeholder:text-zinc-600"
+                    rows={6}
+                  />
+                  <button
+                    onClick={handleTextImportSubmit}
+                    disabled={!textImport.trim()}
+                    className="w-full py-2.5 rounded-lg bg-sky-500/15 text-sky-400 text-xs font-medium hover:bg-sky-500/25 transition-colors disabled:opacity-30"
+                  >
+                    Planı Yükle
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => {
                   if (confirm('Varsayılan plana dönmek istediğine emin misin?')) {
                     onReset()
                     onClose()
                   }
-                },
-              },
-            ] : []),
-          ].map((action) => (
-            <button
-              key={action.title}
-              onClick={action.onClick}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-zinc-800 transition-colors text-left"
-            >
-              <div className="shrink-0 w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center">
-                {action.icon}
-              </div>
-              <div>
-                <p className="text-sm font-medium">{action.title}</p>
-                <p className="text-xs text-zinc-500">{action.subtitle}</p>
-              </div>
-            </button>
-          ))}
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-zinc-800 transition-colors text-left mt-2"
+              >
+                <div className="shrink-0 w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center">
+                  <RotateCcw size={20} className="text-red-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Varsayılana Dön</p>
+                  <p className="text-xs text-zinc-500">Orijinal planı geri yükle</p>
+                </div>
+              </button>
+            </>
+          )}
         </div>
 
         <input
