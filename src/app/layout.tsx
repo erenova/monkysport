@@ -15,6 +15,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'MonkySport — Workout Tracker',
   description: 'Günlük antrenman takip uygulaması',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'MonkySport',
+  },
 }
 
 export const viewport: Viewport = {

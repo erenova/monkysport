@@ -30,6 +30,10 @@ export default function Home() {
       if (data.settings.githubToken) setGithubToken(data.settings.githubToken)
     }
     setLoaded(true)
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+    }
   }, [])
 
   // Auto-sync from gist on load
