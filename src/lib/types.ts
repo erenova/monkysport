@@ -41,6 +41,22 @@ export interface Recipe {
   url: string
 }
 
+export interface Food {
+  id: string
+  name: string
+  unit: string
+  baseAmount: number
+  protein: number
+  carbs: number
+  fat: number
+  calories: number
+}
+
+export interface FoodRef {
+  foodId: string
+  amount: number
+}
+
 export type MealAnchor = 'fixed' | 'pre-workout' | 'workout' | 'post-workout'
 
 export interface Meal {
@@ -50,6 +66,7 @@ export interface Meal {
   anchor: MealAnchor
   fixedTime?: string
   offsetMinutes?: number
+  foods?: FoodRef[]
   protein?: number
   carbs?: number
   fat?: number
@@ -59,9 +76,17 @@ export interface Meal {
   trainingOnly?: boolean
 }
 
+export interface DayMealPlan {
+  day: number
+  workoutTime?: string
+  meals: Meal[]
+}
+
 export interface ScheduleConfig {
   workoutTime: string
-  meals: Meal[]
+  foods?: Food[]
+  dailyMeals?: DayMealPlan[]
+  meals?: Meal[]
 }
 
 export interface AppData {

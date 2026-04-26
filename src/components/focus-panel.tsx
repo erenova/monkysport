@@ -1,7 +1,7 @@
 'use client'
 
 import { Exercise, ExerciseLog } from '@/lib/types'
-import { Target, ArrowRight, Play } from 'lucide-react'
+import { Target, ArrowRight, Play, Video } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface FocusInfo {
@@ -31,10 +31,11 @@ interface FocusPanelProps {
   focus: FocusInfo
   onStart: () => void
   onJumpToCard: (exerciseId: string) => void
+  onOpenVideo: (exercise: Exercise) => void
   timerActive: boolean
 }
 
-export function FocusPanel({ focus, onStart, onJumpToCard, timerActive }: FocusPanelProps) {
+export function FocusPanel({ focus, onStart, onJumpToCard, onOpenVideo, timerActive }: FocusPanelProps) {
   if (focus.done || !focus.current) return null
   const { exercise, setIndex } = focus.current
 
@@ -64,18 +65,26 @@ export function FocusPanel({ focus, onStart, onJumpToCard, timerActive }: FocusP
           </div>
         </button>
 
-        <div className="flex items-center gap-2 mt-3">
+        <div className="flex items-stretch gap-2 mt-3">
+          <button
+            onClick={() => onOpenVideo(exercise)}
+            className="flex items-center justify-center gap-1.5 px-4 h-12 rounded-xl bg-sky-500/15 text-sky-300 text-sm font-semibold border border-sky-500/30 hover:bg-sky-500/25 active:scale-[0.98] transition-all"
+            aria-label="Video + Timer"
+          >
+            <Video size={16} />
+            Video
+          </button>
           <button
             onClick={onStart}
             disabled={timerActive}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl text-sm font-semibold transition-colors',
+              'flex-1 flex items-center justify-center gap-1.5 h-12 rounded-xl text-sm font-bold transition-all shadow-lg',
               timerActive
-                ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-                : 'bg-amber-500 text-black hover:bg-amber-400 active:scale-[0.98]',
+                ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed shadow-none'
+                : 'bg-amber-500 text-black hover:bg-amber-400 active:scale-[0.98] shadow-amber-500/20',
             )}
           >
-            <Play size={14} />
+            <Play size={16} />
             {exercise.durationSeconds ? 'Seti Başlat' : 'Seti İşaretle'}
           </button>
         </div>

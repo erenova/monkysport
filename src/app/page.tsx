@@ -8,7 +8,7 @@ import { defaultPlan } from '@/data/default-plan'
 import { defaultSchedule } from '@/data/default-schedule'
 import { DaySelector } from '@/components/day-selector'
 import { ExerciseCard } from '@/components/exercise-card'
-import { VideoModal } from '@/components/video-modal'
+import { VideoCoach } from '@/components/video-coach'
 import { PlanManager } from '@/components/plan-manager'
 import { TimerBar } from '@/components/timer-bar'
 import { FocusPanel, computeFocus } from '@/components/focus-panel'
@@ -405,6 +405,7 @@ export default function Home() {
               focus={focus}
               onStart={handleFocusStart}
               onJumpToCard={handleJumpToCard}
+              onOpenVideo={setVideoExercise}
               timerActive={!!timer}
             />
           )}
@@ -456,13 +457,15 @@ export default function Home() {
         <div className="mt-5">
           <ScheduleView
             config={schedule}
+            selectedDay={selectedDay}
+            schedule={plan.schedule}
             currentDay={currentDay}
             onChange={setSchedule}
           />
         </div>
       )}
 
-      <VideoModal exercise={videoExercise} onClose={() => setVideoExercise(null)} />
+      <VideoCoach exercise={videoExercise} onClose={() => setVideoExercise(null)} />
 
       {timer && (
         <TimerBar
