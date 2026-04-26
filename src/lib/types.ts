@@ -7,6 +7,7 @@ export interface Exercise {
   videoUrl: string
   targetMuscles: string[]
   restSeconds: number
+  durationSeconds?: number
 }
 
 export interface DayPlan {
@@ -35,6 +36,34 @@ export interface DayLog {
   exercises: ExerciseLog[]
 }
 
+export interface Recipe {
+  name: string
+  url: string
+}
+
+export type MealAnchor = 'fixed' | 'pre-workout' | 'workout' | 'post-workout'
+
+export interface Meal {
+  id: string
+  name: string
+  emoji: string
+  anchor: MealAnchor
+  fixedTime?: string
+  offsetMinutes?: number
+  protein?: number
+  carbs?: number
+  fat?: number
+  calories?: number
+  notes?: string
+  recipes?: Recipe[]
+  trainingOnly?: boolean
+}
+
+export interface ScheduleConfig {
+  workoutTime: string
+  meals: Meal[]
+}
+
 export interface AppData {
   plan: WorkoutPlan
   logs: DayLog[]
@@ -42,5 +71,6 @@ export interface AppData {
     startDate: string
     gistId?: string
     githubToken?: string
+    schedule?: ScheduleConfig
   }
 }

@@ -1,5 +1,25 @@
-import { AppData, WorkoutPlan, DayLog } from './types'
+import { AppData, WorkoutPlan, DayLog, ScheduleConfig } from './types'
 import { getToday } from './utils'
+
+export type ImportPayload =
+  | { kind: 'plan'; plan: WorkoutPlan }
+  | { kind: 'full'; plan: WorkoutPlan; schedule?: ScheduleConfig; logs?: DayLog[] }
+
+function isPlan(obj: unknown): obj is WorkoutPlan {
+  return !!obj && typeof obj === 'object' && 'id' in obj && 'schedule' in obj && Array.isArray((obj as WorkoutPlan).schedule)
+}
+
+export function parseImport(raw: string): ImportPayload {
+  const parsed = JSON.parse(raw) as unknown
+  if (parsed && typeof parsed === 'object' && 'plan' in parsed && isPlan((parsed as AppData).plan)) {
+    const data = parsed as AppData
+    return { kind: 'full', plan: data.plan, schedule: data.settings?.schedule, logs: data.logs }
+  }
+  if (isPlan(parsed)) {
+    return { kind: 'plan', plan: parsed }
+  }
+  throw new Error('Geçersiz format: WorkoutPlan veya AppData bekleniyor')
+}
 
 const STORAGE_KEY = 'monkysport_data'
 
@@ -44,19 +64,14 @@ export function exportPlan(plan: WorkoutPlan): void {
   URL.revokeObjectURL(url)
 }
 
-export function importPlan(file: File): Promise<WorkoutPlan> {
+export function importFile(file: File): Promise<ImportPayload> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const plan = JSON.parse(reader.result as string)
-        if (!plan.id || !plan.schedule) {
-          reject(new Error('Geçersiz plan formatı'))
-          return
-        }
-        resolve(plan)
-      } catch {
-        reject(new Error('Geçersiz JSON'))
+        resolve(parseImport(reader.result as string))
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error('Geçersiz JSON'))
       }
     }
     reader.onerror = () => reject(new Error('Dosya okunamadı'))
@@ -64,17 +79,30 @@ export function importPlan(file: File): Promise<WorkoutPlan> {
   })
 }
 
-export async function fetchGistPlan(gistId: string): Promise<WorkoutPlan> {
+export async function fetchGist(gistId: string): Promise<ImportPayload> {
   const res = await fetch(`https://api.github.com/gists/${gistId}`, { cache: 'no-store' })
   if (!res.ok) throw new Error(`GitHub API: ${res.status}`)
-  const gist = await res.json()
-  const file = Object.values(gist.files)[0] as { content: string }
-  const plan = JSON.parse(file.content)
-  if (!plan.id || !plan.schedule) throw new Error('Geçersiz plan formatı')
-  return plan
+  const gist = await res.json() as { files: Record<string, { content: string }> }
+  const files = Object.values(gist.files)
+  if (files.length === 0) throw new Error('Gist boş')
+  // Prefer a file named monkysport.json or plan.json; otherwise first file
+  const namedEntries = Object.entries(gist.files)
+  const preferred = namedEntries.find(([n]) => /monkysport|appdata|backup/i.test(n))
+    ?? namedEntries.find(([n]) => /plan/i.test(n))
+    ?? namedEntries[0]
+  return parseImport(preferred[1].content)
 }
 
-export async function pushGistPlan(gistId: string, token: string, plan: WorkoutPlan): Promise<void> {
+export async function pushGist(gistId: string, token: string, data: AppData): Promise<void> {
+  // Strip secrets — never upload tokens or the gistId itself
+  const safe: AppData = {
+    plan: data.plan,
+    logs: data.logs,
+    settings: {
+      startDate: data.settings.startDate,
+      schedule: data.settings.schedule,
+    },
+  }
   const res = await fetch(`https://api.github.com/gists/${gistId}`, {
     method: 'PATCH',
     headers: {
@@ -82,7 +110,7 @@ export async function pushGistPlan(gistId: string, token: string, plan: WorkoutP
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      files: { 'plan.json': { content: JSON.stringify(plan, null, 2) } },
+      files: { 'plan.json': { content: JSON.stringify(safe, null, 2) } },
     }),
   })
   if (!res.ok) throw new Error(`GitHub API: ${res.status}`)

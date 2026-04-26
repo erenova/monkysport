@@ -2,12 +2,12 @@
 
 import { useRef, useEffect, useState } from 'react'
 import { WorkoutPlan, AppData } from '@/lib/types'
-import { exportPlan, importPlan, exportAllData } from '@/lib/storage'
+import { exportPlan, importFile, exportAllData, parseImport, ImportPayload } from '@/lib/storage'
 import { extractGistId } from '@/lib/utils'
 import {
   X, Download, Upload, RotateCcw, Database,
   RefreshCw, ArrowUpFromLine, Link, KeyRound,
-  Copy, FileText,
+  Copy, FileText, Sparkles,
 } from 'lucide-react'
 
 interface PlanManagerProps {
@@ -15,17 +15,18 @@ interface PlanManagerProps {
   allData: AppData
   gistId: string
   githubToken: string
-  onImport: (plan: WorkoutPlan) => void
+  onImport: (payload: ImportPayload) => void
   onReset: () => void
   onSettingsChange: (gistId: string, githubToken: string) => void
   onSync: () => Promise<void>
   onPush: () => Promise<void>
+  onShowGuide: () => void
   onClose: () => void
 }
 
 export function PlanManager({
   plan, allData, gistId, githubToken,
-  onImport, onReset, onSettingsChange, onSync, onPush, onClose,
+  onImport, onReset, onSettingsChange, onSync, onPush, onShowGuide, onClose,
 }: PlanManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [gistDraft, setGistDraft] = useState(gistId)
@@ -85,27 +86,23 @@ export function PlanManager({
     const file = e.target.files?.[0]
     if (!file) return
     try {
-      const imported = await importPlan(file)
-      onImport(imported)
+      const payload = await importFile(file)
+      onImport(payload)
       onClose()
     } catch (err) {
-      alert('Plan yüklenemedi: ' + (err as Error).message)
+      alert('Yüklenemedi: ' + (err as Error).message)
     }
   }
 
   function handleTextImportSubmit() {
     try {
-      const parsed = JSON.parse(textImport.trim())
-      if (!parsed.id || !parsed.schedule) {
-        setStatus({ type: 'err', msg: 'Geçersiz plan: id ve schedule gerekli' })
-        return
-      }
-      onImport(parsed)
+      const payload = parseImport(textImport.trim())
+      onImport(payload)
       setTextImport('')
       setShowTextImport(false)
       onClose()
-    } catch {
-      setStatus({ type: 'err', msg: 'Geçersiz JSON formatı' })
+    } catch (err) {
+      setStatus({ type: 'err', msg: (err as Error).message })
     }
   }
 
@@ -251,7 +248,16 @@ export function PlanManager({
             </button>
           </div>
 
-          <p className="text-[10px] text-zinc-500 uppercase font-medium px-1 pt-3">İçe Aktar</p>
+          <div className="flex items-center justify-between px-1 pt-3">
+            <p className="text-[10px] text-zinc-500 uppercase font-medium">İçe Aktar</p>
+            <button
+              onClick={onShowGuide}
+              className="flex items-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 transition-colors font-semibold"
+            >
+              <Sparkles size={11} />
+              AI Promptu
+            </button>
+          </div>
           <div className="flex gap-1.5">
             <button
               onClick={() => fileInputRef.current?.click()}

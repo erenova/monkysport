@@ -11,9 +11,10 @@ interface ExerciseCardProps {
   onToggleSet: (exerciseId: string, setIndex: number) => void
   onVideoClick: (exercise: Exercise) => void
   onUpdate: (exercise: Exercise) => void
+  activeTimer?: { kind: 'work' | 'rest'; setIndex: number } | null
 }
 
-export function ExerciseCard({ exercise, log, onToggleSet, onVideoClick, onUpdate }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, log, onToggleSet, onVideoClick, onUpdate, activeTimer }: ExerciseCardProps) {
   const [editing, setEditing] = useState(false)
   const [showNotes, setShowNotes] = useState(false)
   const [draft, setDraft] = useState(exercise)
@@ -69,6 +70,21 @@ export function ExerciseCard({ exercise, log, onToggleSet, onVideoClick, onUpdat
               placeholder="saniye"
             />
           </div>
+        </div>
+        <div>
+          <label className="text-[10px] text-zinc-500 uppercase font-medium">
+            Süre (saniye, plank/hold için)
+          </label>
+          <input
+            type="number"
+            value={draft.durationSeconds ?? ''}
+            onChange={e => {
+              const v = e.target.value
+              setDraft({ ...draft, durationSeconds: v === '' ? undefined : (parseInt(v) || 0) })
+            }}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50"
+            placeholder="Boş bırak = tekrar bazlı"
+          />
         </div>
         <div>
           <label className="text-[10px] text-zinc-500 uppercase font-medium">Notlar</label>
@@ -143,6 +159,12 @@ export function ExerciseCard({ exercise, log, onToggleSet, onVideoClick, onUpdat
             </h3>
             <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-500">
               <span>{exercise.sets} Set &times; {exercise.reps}</span>
+              {exercise.durationSeconds ? (
+                <span className="flex items-center gap-0.5 text-amber-500/70">
+                  <Timer size={10} />
+                  {exercise.durationSeconds}s çalış
+                </span>
+              ) : null}
               {exercise.restSeconds > 0 && (
                 <span className="flex items-center gap-0.5">
                   <Timer size={10} />
@@ -165,20 +187,26 @@ export function ExerciseCard({ exercise, log, onToggleSet, onVideoClick, onUpdat
       </div>
 
       <div className="flex gap-1.5 mt-3">
-        {Array.from({ length: exercise.sets }, (_, i) => (
-          <button
-            key={i}
-            onClick={() => onToggleSet(exercise.id, i)}
-            className={cn(
-              'flex-1 h-9 rounded-lg border text-xs font-medium transition-all active:scale-95',
-              completedSets[i]
-                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                : 'bg-zinc-800/50 border-zinc-700/30 text-zinc-500 hover:border-zinc-600',
-            )}
-          >
-            {completedSets[i] ? <Check size={14} className="mx-auto" /> : i + 1}
-          </button>
-        ))}
+        {Array.from({ length: exercise.sets }, (_, i) => {
+          const isActive = activeTimer?.setIndex === i
+          const isWorkActive = isActive && activeTimer?.kind === 'work'
+          const isRestActive = isActive && activeTimer?.kind === 'rest'
+          return (
+            <button
+              key={i}
+              onClick={() => onToggleSet(exercise.id, i)}
+              className={cn(
+                'flex-1 h-9 rounded-lg border text-xs font-medium transition-all active:scale-95',
+                isWorkActive && 'bg-amber-500/25 border-amber-500/60 text-amber-300 animate-pulse',
+                isRestActive && 'bg-emerald-500/25 border-emerald-500/60 text-emerald-300 animate-pulse',
+                !isActive && completedSets[i] && 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400',
+                !isActive && !completedSets[i] && 'bg-zinc-800/50 border-zinc-700/30 text-zinc-500 hover:border-zinc-600',
+              )}
+            >
+              {completedSets[i] ? <Check size={14} className="mx-auto" /> : i + 1}
+            </button>
+          )
+        })}
       </div>
 
       {exercise.targetMuscles.length > 0 && (

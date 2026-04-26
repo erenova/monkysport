@@ -131,11 +131,12 @@ const legs: Omit<Exercise, 'id'>[] = [
   {
     name: 'Plank',
     sets: 3,
-    reps: 'Max',
+    reps: '60sn',
     notes: 'Dayanabildiğin kadar. Kalçayı düşürme!',
     videoUrl: '',
     targetMuscles: ['Core'],
     restSeconds: 60,
+    durationSeconds: 60,
   },
   {
     name: 'Lying Leg Raises',
