@@ -53,14 +53,9 @@ export default function Home() {
   useEffect(() => {
     if (!loaded || !gistId) return
     fetchGist(gistId)
-      .then(payload => {
-        setPlan(payload.plan)
-        if (payload.kind === 'full') {
-          if (payload.logs) setLogs(payload.logs)
-          if (payload.schedule) setSchedule(payload.schedule)
-        }
-      })
+      .then(handleImport)
       .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, gistId])
 
   useEffect(() => {
@@ -246,11 +241,7 @@ export default function Home() {
   async function handleSync() {
     if (!gistId) throw new Error('Gist ID yok')
     const payload = await fetchGist(gistId)
-    setPlan(payload.plan)
-    if (payload.kind === 'full') {
-      if (payload.logs) setLogs(payload.logs)
-      if (payload.schedule) setSchedule(payload.schedule)
-    }
+    handleImport(payload)
   }
 
   async function handlePush() {

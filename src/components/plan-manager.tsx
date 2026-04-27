@@ -61,7 +61,7 @@ export function PlanManager({
     setStatus(null)
     try {
       await onSync()
-      setStatus({ type: 'ok', msg: 'Plan senkronlandı' })
+      onClose()
     } catch {
       setStatus({ type: 'err', msg: 'Senkron başarısız — Gist ID kontrol et' })
     } finally {
