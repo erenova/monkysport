@@ -79,22 +79,29 @@ export function importFile(file: File): Promise<ImportPayload> {
   })
 }
 
-export async function fetchGist(gistId: string): Promise<ImportPayload> {
-  const res = await fetch(`https://api.github.com/gists/${gistId}`, { cache: 'no-store' })
+const CANONICAL_FILE = 'monkysport.json'
+
+async function readGistFiles(gistId: string, token?: string): Promise<Record<string, { content: string }>> {
+  const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+    cache: 'no-store',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  })
   if (!res.ok) throw new Error(`GitHub API: ${res.status}`)
   const gist = await res.json() as { files: Record<string, { content: string }> }
-  const files = Object.values(gist.files)
-  if (files.length === 0) throw new Error('Gist boş')
-  // Prefer a file named monkysport.json or plan.json; otherwise first file
-  const namedEntries = Object.entries(gist.files)
-  const preferred = namedEntries.find(([n]) => /monkysport|appdata|backup/i.test(n))
-    ?? namedEntries.find(([n]) => /plan/i.test(n))
-    ?? namedEntries[0]
+  return gist.files
+}
+
+export async function fetchGist(gistId: string): Promise<ImportPayload> {
+  const files = await readGistFiles(gistId)
+  const entries = Object.entries(files)
+  if (entries.length === 0) throw new Error('Gist boş')
+  const preferred = entries.find(([n]) => n === CANONICAL_FILE)
+    ?? entries.find(([n]) => /^(plan|appdata|monkysport.*|.*backup.*)\.json$/i.test(n))
+    ?? entries[0]
   return parseImport(preferred[1].content)
 }
 
 export async function pushGist(gistId: string, token: string, data: AppData): Promise<void> {
-  // Strip secrets — never upload tokens or the gistId itself
   const safe: AppData = {
     plan: data.plan,
     logs: data.logs,
@@ -103,15 +110,20 @@ export async function pushGist(gistId: string, token: string, data: AppData): Pr
       schedule: data.settings.schedule,
     },
   }
+  const existing = await readGistFiles(gistId, token)
+  const files: Record<string, { content: string } | null> = {
+    [CANONICAL_FILE]: { content: JSON.stringify(safe, null, 2) },
+  }
+  for (const name of Object.keys(existing)) {
+    if (name !== CANONICAL_FILE) files[name] = null
+  }
   const res = await fetch(`https://api.github.com/gists/${gistId}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      files: { 'plan.json': { content: JSON.stringify(safe, null, 2) } },
-    }),
+    body: JSON.stringify({ files }),
   })
   if (!res.ok) throw new Error(`GitHub API: ${res.status}`)
 }
