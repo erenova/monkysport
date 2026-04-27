@@ -1,4 +1,4 @@
-const CACHE_NAME = 'monkysport-v2'
+const CACHE_NAME = 'monkysport-v3'
 
 self.addEventListener('install', () => self.skipWaiting())
 
@@ -14,10 +14,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event
 
-  // Skip non-GET and chrome-extension requests
-  if (request.method !== 'GET' || request.url.startsWith('chrome-extension')) return
+  if (request.method !== 'GET') return
 
-  // Network-first for navigation (HTML pages)
+  const url = new URL(request.url)
+  if (url.origin !== self.location.origin) return
+
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -31,7 +32,6 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Cache-first for static assets
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached
