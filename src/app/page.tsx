@@ -52,14 +52,24 @@ export default function Home() {
 
   useEffect(() => {
     if (!loaded || !gistId) return
+    console.log('[auto-fetch] mount fetch start', { gistId })
     fetchGist(gistId)
-      .then(handleImport)
-      .catch(() => {})
+      .then(payload => {
+        console.log('[auto-fetch] applying payload')
+        handleImport(payload)
+      })
+      .catch(err => console.warn('[auto-fetch] failed', err))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, gistId])
 
   useEffect(() => {
     if (!loaded) return
+    console.log('[save] writing localStorage', {
+      planId: plan.id,
+      planName: plan.name,
+      firstExercise: plan.schedule[0]?.exercises[0]?.name,
+      logsCount: logs.length,
+    })
     saveData({
       plan,
       logs,
@@ -217,6 +227,12 @@ export default function Home() {
   }
 
   function handleImport(payload: ImportPayload) {
+    console.log('[import] applying payload', {
+      kind: payload.kind,
+      planId: payload.plan.id,
+      planName: payload.plan.name,
+      firstExercise: payload.plan.schedule[0]?.exercises[0]?.name,
+    })
     setPlan(payload.plan)
     setSelectedDay(getTodaysDayNumber())
     if (payload.kind === 'full') {
@@ -225,6 +241,7 @@ export default function Home() {
     } else {
       setLogs([])
     }
+    console.log('[import] state setters fired')
   }
 
   function handleReset() {
@@ -239,14 +256,24 @@ export default function Home() {
   }
 
   async function handleSync() {
+    console.log('[sync] handleSync invoked', { gistId })
     if (!gistId) throw new Error('Gist ID yok')
     const payload = await fetchGist(gistId)
     handleImport(payload)
+    console.log('[sync] handleSync done')
   }
 
   async function handlePush() {
+    console.log('[push] handlePush invoked', {
+      gistId,
+      hasToken: !!githubToken,
+      planId: plan.id,
+      planName: plan.name,
+      firstExercise: plan.schedule[0]?.exercises[0]?.name,
+    })
     if (!gistId || !githubToken) throw new Error('Gist ayarları eksik')
     await pushGist(gistId, githubToken, appData)
+    console.log('[push] handlePush done')
   }
 
   const focus = useMemo(
