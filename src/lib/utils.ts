@@ -11,9 +11,22 @@ export function getToday(): string {
   return new Date().toISOString().split('T')[0]
 }
 
-export function getYouTubeEmbedUrl(url: string): string | null {
-  const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)
-  return match ? `https://www.youtube.com/embed/${match[1]}` : null
+export function getYouTubeEmbedUrl(url: string, params?: Record<string, string | number>): string | null {
+  const idMatch = url.match(/(?:v=|youtu\.be\/|\/embed\/|\/shorts\/)([a-zA-Z0-9_-]{11})/)
+  if (!idMatch) return null
+  const startMatch = url.match(/[?&#]t=(\d+h)?(\d+m)?(\d+s?)?/)
+  let start = 0
+  if (startMatch) {
+    const [, h, m, s] = startMatch
+    start = (parseInt(h ?? '0') || 0) * 3600
+      + (parseInt(m ?? '0') || 0) * 60
+      + (parseInt(s ?? '0') || 0)
+  }
+  const query = new URLSearchParams()
+  if (start > 0) query.set('start', String(start))
+  for (const [k, v] of Object.entries(params ?? {})) query.set(k, String(v))
+  const qs = query.toString()
+  return qs ? `https://www.youtube.com/embed/${idMatch[1]}?${qs}` : `https://www.youtube.com/embed/${idMatch[1]}`
 }
 
 export function getYouTubeSearchUrl(query: string): string {

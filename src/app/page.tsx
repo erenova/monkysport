@@ -46,30 +46,19 @@ export default function Home() {
     setLoaded(true)
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
+      if (process.env.NODE_ENV === 'production') {
+        navigator.serviceWorker.register('/sw.js')
+      } else {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          for (const r of regs) r.unregister()
+        })
+        if (window.caches) caches.keys().then(keys => keys.forEach(k => caches.delete(k)))
+      }
     }
   }, [])
 
   useEffect(() => {
-    if (!loaded || !gistId) return
-    console.log('[auto-fetch] mount fetch start', { gistId })
-    fetchGist(gistId)
-      .then(payload => {
-        console.log('[auto-fetch] applying payload')
-        handleImport(payload)
-      })
-      .catch(err => console.warn('[auto-fetch] failed', err))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, gistId])
-
-  useEffect(() => {
     if (!loaded) return
-    console.log('[save] writing localStorage', {
-      planId: plan.id,
-      planName: plan.name,
-      firstExercise: plan.schedule[0]?.exercises[0]?.name,
-      logsCount: logs.length,
-    })
     saveData({
       plan,
       logs,
@@ -227,12 +216,6 @@ export default function Home() {
   }
 
   function handleImport(payload: ImportPayload) {
-    console.log('[import] applying payload', {
-      kind: payload.kind,
-      planId: payload.plan.id,
-      planName: payload.plan.name,
-      firstExercise: payload.plan.schedule[0]?.exercises[0]?.name,
-    })
     setPlan(payload.plan)
     setSelectedDay(getTodaysDayNumber())
     if (payload.kind === 'full') {
@@ -241,7 +224,6 @@ export default function Home() {
     } else {
       setLogs([])
     }
-    console.log('[import] state setters fired')
   }
 
   function handleReset() {
@@ -256,24 +238,14 @@ export default function Home() {
   }
 
   async function handleSync() {
-    console.log('[sync] handleSync invoked', { gistId })
     if (!gistId) throw new Error('Gist ID yok')
     const payload = await fetchGist(gistId)
     handleImport(payload)
-    console.log('[sync] handleSync done')
   }
 
   async function handlePush() {
-    console.log('[push] handlePush invoked', {
-      gistId,
-      hasToken: !!githubToken,
-      planId: plan.id,
-      planName: plan.name,
-      firstExercise: plan.schedule[0]?.exercises[0]?.name,
-    })
     if (!gistId || !githubToken) throw new Error('Gist ayarları eksik')
     await pushGist(gistId, githubToken, appData)
-    console.log('[push] handlePush done')
   }
 
   const focus = useMemo(
@@ -483,7 +455,25 @@ export default function Home() {
         </div>
       )}
 
-      <VideoCoach exercise={videoExercise} onClose={() => setVideoExercise(null)} />
+      <VideoCoach
+        exercises={currentDay?.exercises ?? []}
+        activeExerciseId={videoExercise?.id ?? null}
+        log={todayLog}
+        onChangeExercise={id => {
+          const next = currentDay?.exercises.find(e => e.id === id)
+          if (next) setVideoExercise(next)
+        }}
+        onClose={() => setVideoExercise(null)}
+        onUpdate={updated => {
+          handleUpdateExercise(updated)
+          setVideoExercise(updated)
+        }}
+        onToggleSet={(exerciseId, setIndex) => {
+          const log = todayLog?.exercises.find(e => e.exerciseId === exerciseId)
+          const current = log?.completedSets[setIndex] ?? false
+          setSetState(exerciseId, setIndex, !current)
+        }}
+      />
 
       {timer && (
         <TimerBar

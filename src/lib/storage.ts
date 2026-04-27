@@ -92,24 +92,13 @@ async function readGistFiles(gistId: string, token?: string): Promise<Record<str
 }
 
 export async function fetchGist(gistId: string): Promise<ImportPayload> {
-  console.log('[gist] fetch start', { gistId })
   const files = await readGistFiles(gistId)
   const entries = Object.entries(files)
-  console.log('[gist] files received', { names: entries.map(([n]) => n) })
   if (entries.length === 0) throw new Error('Gist boş')
   const preferred = entries.find(([n]) => n === CANONICAL_FILE)
     ?? entries.find(([n]) => /^(plan|appdata|monkysport.*|.*backup.*)\.json$/i.test(n))
     ?? entries[0]
-  console.log('[gist] selected file', { name: preferred[0], contentPreview: preferred[1].content.slice(0, 200) })
-  const payload = parseImport(preferred[1].content)
-  console.log('[gist] parsed payload', {
-    kind: payload.kind,
-    planId: payload.plan.id,
-    planName: payload.plan.name,
-    firstExercise: payload.plan.schedule[0]?.exercises[0]?.name,
-    logsCount: payload.kind === 'full' ? payload.logs?.length : null,
-  })
-  return payload
+  return parseImport(preferred[1].content)
 }
 
 export async function pushGist(gistId: string, token: string, data: AppData): Promise<void> {
