@@ -1,4 +1,4 @@
-const CACHE_NAME = 'monkysport-v1'
+const CACHE_NAME = 'monkysport-v2'
 
 self.addEventListener('install', () => self.skipWaiting())
 
